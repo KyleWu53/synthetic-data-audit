@@ -1,0 +1,10 @@
+{
+  "mode": "gemini",
+  "model": "gemini-2.5-flash",
+  "n": 500,
+  "trials": 3,
+  "seed": 42,
+  "batch_size": 100,
+  "out": "results/gemini",
+  "execute_reviewed_samplers": true
+}

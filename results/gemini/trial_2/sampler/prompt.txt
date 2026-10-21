@@ -1,0 +1,8 @@
+Columns in order: normal,lognormal,bimodal,x,y,category.
+normal ~ Normal(mean=0, standard deviation=1).
+lognormal = exp(Z), Z ~ Normal(0,0.75).
+bimodal: with probability 0.4 Normal(-2,0.5), otherwise Normal(2,0.8).
+x,y jointly standard normal, correlation 0.8.
+category takes A,B,C with probabilities 0.5,0.3,0.2.
+All groups are mutually independent except x,y. Rows are independent.
+Write only Python code using numpy and pandas. Read n and seed from sys.argv[1:3]. Write CSV including the header to stdout. Use numpy.random.default_rng(seed). No files, network, or external packages beyond numpy and pandas.

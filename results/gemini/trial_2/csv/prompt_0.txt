@@ -1,0 +1,8 @@
+Columns in order: normal,lognormal,bimodal,x,y,category.
+normal ~ Normal(mean=0, standard deviation=1).
+lognormal = exp(Z), Z ~ Normal(0,0.75).
+bimodal: with probability 0.4 Normal(-2,0.5), otherwise Normal(2,0.8).
+x,y jointly standard normal, correlation 0.8.
+category takes A,B,C with probabilities 0.5,0.3,0.2.
+All groups are mutually independent except x,y. Rows are independent.
+Emit exactly 100 random rows as CSV with header. Output only CSV. Batch 0; experiment seed label 44. Do not write code.

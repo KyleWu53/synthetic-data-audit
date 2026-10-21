@@ -1,0 +1,10 @@
+{
+  "mode": "demo",
+  "model": null,
+  "n": 500,
+  "trials": 3,
+  "seed": 42,
+  "batch_size": 100,
+  "out": "results/demo",
+  "execute_reviewed_samplers": false
+}

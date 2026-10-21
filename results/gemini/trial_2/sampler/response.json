@@ -1,0 +1,31 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "```python\nimport sys\nimport numpy as np\nimport pandas as pd\n\ndef generate_data(n: int, seed: int) -> pd.DataFrame:\n    \"\"\"\n    Generates a pandas DataFrame with specified columns and distributions.\n\n    Args:\n        n (int): The number of rows to generate.\n        seed (int): The seed for the random number generator.\n\n    Returns:\n        pd.DataFrame: A DataFrame containing the generated data.\n    \"\"\"\n    rng = np.random.default_rng(seed)\n\n    # 1. normal ~ Normal(mean=0, standard deviation=1)\n    normal_data = rng.normal(loc=0, scale=1, size=n)\n\n    # 2. lognormal = exp(Z), Z ~ Normal(0,0.75)\n    z_data = rng.normal(loc=0, scale=0.75, size=n)\n    lognormal_data = np.exp(z_data)\n\n    # 3. bimodal: with probability 0.4 Normal(-2,0.5), otherwise Normal(2,0.8)\n    choice_mask = rng.choice([True, False], p=[0.4, 0.6], size=n)\n    bimodal_data_neg = rng.normal(loc=-2, scale=0.5, size=n)\n    bimodal_data_pos = rng.normal(loc=2, scale=0.8, size=n)\n    bimodal_data = np.where(choice_mask, bimodal_data_neg, bimodal_data_pos)\n\n    # 4. x,y jointly standard normal, correlation 0.8\n    # Mean vector for x,y\n    mean_xy = [0, 0]\n    # Covariance matrix: [[var_x, cov_xy], [cov_yx, var_y]]\n    # For standard normal, var_x = var_y = 1.\n    # cov_xy = correlation * std_x * std_y = 0.8 * 1 * 1 = 0.8\n    cov_xy = [[1, 0.8], [0.8, 1]]\n    xy_data = rng.multivariate_normal(mean=mean_xy, cov=cov_xy, size=n)\n    x_data = xy_data[:, 0]\n    y_data = xy_data[:, 1]\n\n    # 5. category takes A,B,C with probabilities 0.5,0.3,0.2\n    category_data = rng.choice(['A', 'B', 'C'], p=[0.5, 0.3, 0.2], size=n)\n\n    # Create a dictionary of the generated data\n    data = {\n        'normal': normal_data,\n        'lognormal': lognormal_data,\n        'bimodal': bimodal_data,\n        'x': x_data,\n        'y': y_data,\n        'category': category_data\n    }\n\n    # Define the exact column order as required\n    column_order = ['normal', 'lognormal', 'bimodal', 'x', 'y', 'category']\n\n    # Create the DataFrame with the specified column order\n    df = pd.DataFrame(data, columns=column_order)\n\n    return df\n\nif __name__ == '__main__':\n    # Read n and seed from command line arguments\n    # sys.argv[0] is the script name, sys.argv[1] is n, sys.argv[2] is seed\n    if len(sys.argv) != 3:\n        print(\"Usage: python script_name.py <n> <seed>\", file=sys.stderr)\n        sys.exit(1)\n\n    try:\n        n_rows = int(sys.argv[1])\n        random_seed = int(sys.argv[2])\n    except ValueError:\n        print(\"Error: n and seed must be integers.\", file=sys.stderr)\n        sys.exit(1)\n\n    # Generate the DataFrame\n    result_df = generate_data(n_rows, random_seed)\n\n    # Write the DataFrame to stdout in CSV format, without the index\n    result_df.to_csv(sys.stdout, index=False)\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 185,
+    "candidatesTokenCount": 981,
+    "totalTokenCount": 3379,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 185
+      }
+    ],
+    "thoughtsTokenCount": 2213,
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-2.5-flash",
+  "responseId": "FynYarL-LKutz7IPpvbk6Q0"
+}

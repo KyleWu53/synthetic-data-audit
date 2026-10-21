@@ -1,0 +1,10 @@
+trial,method,status,mean_ks,category_total_variation,correlation_rmse,real_xy_correlation,synthetic_xy_correlation,discriminator_oof_auc,discriminator_distance_from_chance,duplicate_fraction,error
+0,baseline,ok,0.05120000000000002,0.021999999999999978,0.03707042727386383,0.7767435701908981,0.7438101676827432,0.49308399999999997,0.006916000000000033,0.0,
+0,csv,failed,,,,,,,,,Incomplete model output: MAX_TOKENS
+0,sampler,pending_code_review,,,,,,,,,
+1,baseline,ok,0.0504,0.021999999999999992,0.08115785887539781,0.8018095611499471,0.8173275194542119,0.474856,0.025144,0.0,
+1,csv,failed,,,,,,,,,"Expected 100 rows and columns ['normal', 'lognormal', 'bimodal', 'x', 'y', 'category']; got (113, 6), ['normal', 'lognormal', 'bimodal', 'x', 'y', 'category']"
+1,sampler,pending_code_review,,,,,,,,,
+2,baseline,ok,0.04880000000000001,0.04000000000000002,0.0727152727141906,0.7783979162353938,0.755834241791373,0.49683599999999994,0.0031640000000000557,0.0,
+2,csv,failed,,,,,,,,,"Expected 100 rows and columns ['normal', 'lognormal', 'bimodal', 'x', 'y', 'category']; got (114, 6), ['normal', 'lognormal', 'bimodal', 'x', 'y', 'category']"
+2,sampler,pending_code_review,,,,,,,,,

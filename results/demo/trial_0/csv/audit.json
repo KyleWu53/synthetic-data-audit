@@ -1,0 +1,36 @@
+{
+  "ks": {
+    "normal": {
+      "statistic": 0.19399999999999995,
+      "pvalue": 1.2154852887009729e-08,
+      "holm_pvalue": 6.077426443504865e-08
+    },
+    "lognormal": {
+      "statistic": 0.06,
+      "pvalue": 0.3293581065813255,
+      "holm_pvalue": 1.0
+    },
+    "bimodal": {
+      "statistic": 0.03200000000000003,
+      "pvalue": 0.9603008958861495,
+      "holm_pvalue": 1.0
+    },
+    "x": {
+      "statistic": 0.05399999999999999,
+      "pvalue": 0.4599232291065006,
+      "holm_pvalue": 1.0
+    },
+    "y": {
+      "statistic": 0.05800000000000005,
+      "pvalue": 0.3699050405997647,
+      "holm_pvalue": 1.0
+    }
+  },
+  "category_total_variation": 0.04000000000000001,
+  "correlation_rmse": 0.24741913242659144,
+  "real_xy_correlation": 0.7767435701908981,
+  "synthetic_xy_correlation": 0.005641334575314041,
+  "discriminator_oof_auc": 0.6622840000000001,
+  "discriminator_distance_from_chance": 0.1622840000000001,
+  "duplicate_fraction": 0.0
+}
