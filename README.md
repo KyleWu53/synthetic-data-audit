@@ -1,103 +1,192 @@
-# LLM Synthetic Data: Generation vs. Statistical Fidelity
+# Synthetic Data Generation and Statistical Audit
 
-A reproducible benchmark comparing two ways to generate synthetic tabular data with Gemini: directly emit CSV rows, or write a Python sampler. The audit checks marginal distributions, categorical proportions, correlation structure, and whether a classifier can distinguish generated data from reference samples.
+I built this project to compare two ways of generating synthetic data with Gemini: asking it to write CSV rows directly and asking it to write a Python script that generates the data.
 
-## Quick start (macOS/Linux, Python 3.10+)
+The goal was to check whether the output actually follows the requested distributions. I used statistical tests, correlation comparisons, and a classifier that tries to tell reference data from synthetic data.
 
-Unzip this folder into your Home directory, open Terminal, then:
+## Results
+
+I ran three trials using `gemini-2.5-flash`, requesting 500 rows per method in each trial.
+
+All three Python samplers produced valid datasets. Direct CSV generation failed in all three trials:
+
+- One trial hit the output-token limit.
+- Two trials returned 113 and 114 rows when asked for a batch of 100.
+- Invalid outputs were rejected instead of trimmed or repaired.
+
+These are the average results across the three trials. The baseline is an independent sample from the same reference generator.
+
+| Metric | Reference baseline | Python sampler |
+|---|---:|---:|
+| Mean KS statistic | 0.0501 | 0.0500 |
+| Category total variation | 0.0280 | 0.0600 |
+| Correlation RMSE | 0.0636 | 0.0596 |
+| Discriminator ROC AUC | 0.4883 | 0.5128 |
+
+The samplers produced correlations between 0.789 and 0.802 for a target of 0.8. Their discriminator AUCs ranged from 0.504 to 0.524, close to random guessing at 0.5.
+
+Writing a Python sampler was more reliable in this experiment. However, three trials are a small sample, and the results do not prove that the generated data perfectly matches the reference distribution. The sampler's category proportions also differed more from the reference than the baseline did.
+
+There are no fidelity scores for direct CSV generation because none of its complete datasets passed validation.
+
+## Data
+
+Each dataset contains six columns:
+
+| Column | Distribution |
+|---|---|
+| `normal` | Normal with mean 0 and standard deviation 1 |
+| `lognormal` | Exponential of a normal variable with mean 0 and standard deviation 0.75 |
+| `bimodal` | 40% Normal(-2, 0.5 SD), 60% Normal(2, 0.8 SD) |
+| `x`, `y` | Standard normal variables with correlation 0.8 |
+| `category` | A, B, or C with probabilities 0.5, 0.3, and 0.2 |
+
+The columns are independent except for `x` and `y`.
+
+Both methods receive the same distribution description. Neither receives the reference dataset. The reference data is generated in Python from the known distributions.
+
+## Statistical checks
+
+| Check | What it measures |
+|---|---|
+| Two-sample KS test | Differences between numeric distributions |
+| Holm correction | Adjusts the five numeric KS p-values within each method and trial |
+| Category total variation | Differences in category proportions |
+| Correlation RMSE | Differences across the ten unique numeric correlation pairs |
+| Discriminator ROC AUC | How well a random forest separates reference and synthetic rows |
+| Duplicate fraction | Fraction of repeated complete rows |
+
+Lower KS statistics, total variation, and correlation errors indicate a closer match. A discriminator AUC near 0.5 means the classifier has difficulty separating the datasets.
+
+The classifier uses five-fold stratified cross-validation, with category encoding fitted inside each training fold.
+
+Before scoring, the program checks:
+
+- Exact row count and column names.
+- Missing or nonfinite values.
+- Numeric column types.
+- Positive lognormal values.
+- Allowed category labels.
+
+## Run the demo
+
+Requires Python 3.10 or newer on macOS or Linux.
 
 ```bash
-cd ~/synthetic-data-audit
+git clone https://github.com/KyleWu53/synthetic-data-audit.git
+cd synthetic-data-audit
 bash run.sh --mode demo
 ```
 
-Open `results/demo/REPORT.md`, `summary.csv`, and `comparison.png`. Included demo results use local fixtures, **not Gemini**. The demo CSV fixture deliberately shifts one mean and breaks the correlated pair. The demo sampler fixture is an independent reference sample. They test the harness; they do not predict LLM performance.
+The script creates a virtual environment and installs the required packages.
 
-## Run the real experiment
+Results are saved in `results/demo/`.
 
-Get an API key from https://aistudio.google.com/apikey and select an available text-generation model ID from https://ai.google.dev/gemini-api/docs/models. Set the key privately in Terminal (do not paste it into chat):
+The demo uses local test data. One dataset deliberately shifts a mean and breaks the correlation between `x` and `y` so the audit has known problems to detect. Demo results are separate from the Gemini experiment.
+
+## Run with Gemini
+
+Create an API key through [Google AI Studio](https://aistudio.google.com/apikey).
+
+In Terminal, start Bash:
 
 ```bash
-read -s -p 'Gemini API key: ' GEMINI_API_KEY; echo
-export GEMINI_API_KEY
-export GEMINI_MODEL='YOUR_AVAILABLE_MODEL_ID'
-bash run.sh --mode gemini --n 500 --trials 3 --out results/gemini
+bash
 ```
 
-On shells where `read -p` is unsupported, first run `bash`. This run makes 18 generation requests with the defaults: five CSV batches and one sampler per trial, across three trials. Retries can add requests. Provider charges/quota apply. The model is configurable because availability changes.
-
-The first run audits CSV output and saves each `results/gemini/trial_*/sampler/sampler.py` with status `pending_code_review`. Inspect these scripts before running them. They should only sample arrays and print CSV. Generated Python is arbitrary code; execution below uses a timeout and strips common secret environment variables, but **is not a security sandbox**. Use a disposable environment for code you do not trust.
-
-After reviewing all three scripts:
+Enter your key at the prompt:
 
 ```bash
-bash run.sh --mode gemini --n 500 --trials 3 --out results/gemini --execute-reviewed-samplers
+read -s -p 'Gemini API key: ' GEMINI_API_KEY
+export GEMINI_API_KEY
+echo
+```
+
+Set the model and run generation. Use a new output directory to preserve the committed results:
+
+```bash
+export GEMINI_MODEL='gemini-2.5-flash'
+
+bash run.sh --mode gemini \
+  --n 500 \
+  --trials 3 \
+  --out results/gemini-new
+```
+
+This configuration plans up to 18 generation requests before retries. If a CSV batch fails, the remaining CSV batches for that trial are skipped. API quota and charges depend on your account.
+
+### Review and execute the samplers
+
+The first run saves the generated Python scripts without executing them:
+
+```text
+results/gemini-new/trial_0/sampler/sampler.py
+results/gemini-new/trial_1/sampler/sampler.py
+results/gemini-new/trial_2/sampler/sampler.py
+```
+
+Review these files before running them. The runner uses a timeout, but it is not a security sandbox.
+
+Preserve the original generation outcomes:
+
+```bash
+cp results/gemini-new/summary.csv results/gemini-new/generation_summary.csv
+cp results/gemini-new/REPORT.md results/gemini-new/GENERATION_REPORT.md
+```
+
+Then execute the reviewed scripts:
+
+```bash
+bash run.sh --mode gemini \
+  --n 500 \
+  --trials 3 \
+  --out results/gemini-new \
+  --execute-reviewed-samplers
+```
+
+Use the same model, row count, trial count, seed, and output directory for both steps.
+
+The execution step makes no new Gemini requests. It runs the saved samplers and reuses any complete CSV datasets.
+
+Save the package versions and clear the API key from the shell:
+
+```bash
+.venv/bin/python -m pip freeze > results/gemini-new/environment.txt
 unset GEMINI_API_KEY
 ```
 
-Use exactly the same n, trial count, seed, and model on both passes. The second pass reuses CSVs and runs the reviewed scripts; it makes no Gemini requests. Use a new output directory for each fresh experiment; initial generation runs overwrite matching files. Raw API responses, prompts, generated scripts, CSVs, metrics, configuration, and aggregate reports are retained. Keys are never included in requests saved to disk.
+## Output files
 
-## Experimental design
+The committed experiment is in `results/gemini/`.
 
-Both methods receive the same exact distribution specification, not the reference sample. This is a test of obeying a known data-generating process, not private-data learning. Reference data is simulated ground truth, not an observed real-world dataset.
-
-- Normal: mean 0, SD 1.
-- Lognormal: underlying normal mean 0, SD 0.75.
-- Bimodal: 40% Normal(-2, 0.5 SD), 60% Normal(2, 0.8 SD).
-- Correlated pair: standard-normal x,y with correlation 0.8.
-- Category: A/B/C with probabilities 0.5/0.3/0.2.
-- All groups independent except x,y.
-
-Each trial uses 500 reference and 500 synthetic rows per method by default. An independent reference sample provides a finite-sample baseline. Three trials are a small exploratory experiment; use more trials for stronger conclusions. Seed labels in CSV prompts do not guarantee reproducible model output. Local generators are seeded; provider behavior and model versions may vary.
-
-## Audit metrics
-
-| Metric | Meaning |
+| File | Contents |
 |---|---|
-| Two-sample KS statistic | Numeric marginal distribution discrepancy; smaller is better |
-| Holm-adjusted KS p-value | Controls five numeric tests within a method/trial; does not establish equality |
-| Category total variation | Half the sum of absolute category-probability differences |
-| Correlation RMSE | RMSE across the ten unique off-diagonal Pearson correlations |
-| Discriminator OOF ROC AUC | Random forest trained/evaluated with stratified five-fold CV; chance is 0.5 |
-| Duplicate fraction | Fraction of repeated full rows |
+| `generation_summary.csv` | Original generation outcomes and failure reasons |
+| `summary.csv` | Final evaluation results |
+| `REPORT.md` | Generated report and averages |
+| `comparison.png` | Comparison charts |
+| `environment.txt` | Package versions used for the experiment |
+| `trial_*/sampler/sampler.py` | Generated Python samplers |
+| `trial_*/sampler/audit.json` | Detailed sampler audit results |
 
-The discriminator fits category encoding inside each fold to avoid preprocessing leakage. AUC is descriptive, with no claimed hypothesis-test p-value or confidence interval. Both low and high deviations from 0.5 merit inspection; no classifier can certify distributional identity. Across-trial mean and sample SD are reported. No single composite score is used because the metrics capture different failures.
+Prompts, available model responses, reference data, and generated datasets are also stored in the trial folders.
 
-CSV validation enforces exact row count/schema, numeric finite values, positive lognormal values, and allowed categories. Invalid output is reported as failure, not silently repaired. CSV batching reduces truncation but may affect diversity. Output-token limits, row rounding, model randomness, sample size, classifier capacity, and small trial counts limit interpretation. Failure rate should be reported alongside fidelity metrics. The study does not establish privacy guarantees or downstream task utility.
+The final summary shows missing-file errors for direct CSV generation because the original generation attempts never produced complete valid datasets. The original failure reasons are preserved in `generation_summary.csv`.
 
-## Verify
+## Tests
 
 ```bash
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
-Tests verify reference correlation, input rejection, Holm adjustment, and sensitivity to a large shift/broken dependence. Dependencies are bounded rather than locked; after the real run, save the exact environment:
+The tests check reference correlation, input validation, Holm adjustment, and whether the audit detects a large distribution shift and broken correlation.
 
-```bash
-.venv/bin/python -m pip freeze > results/gemini/environment.txt
-```
+## Limitations
 
-## Publish on GitHub
+This is a small experiment using three trials and simulated reference data. It does not measure performance on real-world datasets or downstream prediction tasks.
 
-Review files before publishing. `.gitignore` excludes credentials, the virtual environment, and real-run output by default. To intentionally include reviewed experiment artifacts:
+A high KS p-value or an AUC near 0.5 does not prove that two distributions are identical. Results depend on the prompt, model, sample size, batch size, token limit, and classifier.
 
-```bash
-git init
-git add audit.py run.sh requirements.txt README.md tests .gitignore results/demo
-git commit -m "Build synthetic data generation and statistical audit benchmark"
-# After completing and reviewing the real experiment:
-git add -f results/gemini
-git commit -m "Document Gemini experiment results"
-```
+The token-limited response was not saved because the program raised an error before writing it to disk. Its failure reason is preserved in the generation summary.
 
-Create an empty GitHub repository, then follow its instructions to add a remote and push. Do not commit API keys. No GitHub repository has been created by this package.
-
-## Resume / application wording
-
-After completing the real run, a defensible bullet is:
-
-“Built a Gemini-powered synthetic tabular data benchmark comparing direct CSV generation with LLM-written Python samplers; evaluated distribution fidelity using KS tests, correlation error, categorical total variation, and cross-validated discriminator AUC.”
-
-Add measured results only after reviewing the real report. Before that, describe it as an implemented benchmark with a validated demo, not a completed Gemini study. Be ready to explain the code and disclose AI assistance accurately if asked.
-
-API reference: https://ai.google.dev/api/generate-content
+Local sampling uses fixed seeds, but Gemini output can vary between runs. This project does not test privacy guarantees.
